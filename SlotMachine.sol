@@ -49,13 +49,14 @@ contract SlotMachineRouter {
 
 
 contract gameClient {
+
+    address public player;
     
     constructor(address _player) {
-    address player = _player;
-
+    player = _player;
     }
 
-
+    
 
 
     }
