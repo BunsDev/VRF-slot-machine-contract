@@ -40,7 +40,7 @@ contract SlotMachineRouter {
     //create client function
     function createClient(address player) internal {
         //creates new pet NFT
-        gameClient newGameClient = new gameClient(player); // made constructor for name only -josh
+        gameClient newGameClient = new gameClient(player);
         addressToClient[msg.sender] = newGameClient;
     }
 }
