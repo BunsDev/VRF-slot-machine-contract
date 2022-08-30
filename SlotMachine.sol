@@ -29,23 +29,29 @@ contract SlotMachineRouter {
     address[] public players;
 
     //mapping of players to clients
-    //address to owner mapping
     mapping(address => gameClient) public addressToClient;
+
+    //We need a way to prove that a player has their own instance
+    //lets try, creating a mapping that will associate a user with a boolean,
+    //because i cant check if addressToClient returns null
+    mapping(address => bool) public userHasClient;
     
+    //start game function
     function startGame() public {
-        
+        if (userHasClient[msg.sender] == false )
         createClient(msg.sender);
+        else
+            //playGame();
+        
     }
     
     //create client function
     function createClient(address player) internal {
-        //creates new pet NFT
+        //creates new game client instance
         gameClient newGameClient = new gameClient(player);
         addressToClient[msg.sender] = newGameClient;
     }
 }
-
-
 
 
 contract gameClient {
@@ -55,8 +61,6 @@ contract gameClient {
     constructor(address _player) {
     player = _player;
     }
-
-    
 
 
     }
