@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 
 /*************************************************/
@@ -15,198 +15,110 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 // Owner will fund contract with ETH
 // Owner will set up Chainlink VRF subscription and fund with LINK
 
-
-// The contract will create clients that can speak to the main contract
-// Each client will serve as a game client for the user
-// I am doing this so there can be an unlimited number of game instances
-
-//we need 3 random numbers, but can only get 1 truly random number
 // I think i will try adding 2 extra helper contracts to give 3 truly random numbers
 // how to play
 // 1. player will use startGame() to play
 // 2. in startGame(), if player does not have a client, a client will be made
-// 3. if a client is made, then playGame() is called
+// 3. if a client is made, continue
 
 
-contract SlotMachineRouter is Ownable {
+contract SlotMachineRouter is VRFConsumerBaseV2{
+    address owner = msg.sender;
 
-    //Chainlink variables to pass onto the client contract
-    //which calls the VRFConsumerBase
-
-    // The amount of LINK to send with the request
-    uint256 public fee;
-    // ID of public key against which randomness is generated
-    bytes32 public keyHash;
-    
-    //vrfCoordinator address of VRFCoordinator contract
-    address public vrfCoordinator;
-    //linkToken address of LINK token contract
-    address public linkToken;
-
-
-   //constructor inherits a VRFConsumerBase and initiates the values for keyHash, 
-   //fee 
-    constructor(address _vrfCoordinator, address _linkToken,
-    bytes32 vrfKeyHash, uint256 vrfFee)
-    {
-        keyHash = vrfKeyHash;
-        fee = vrfFee;
-        vrfCoordinator = _vrfCoordinator;
-        linkToken = _linkToken;
-    }
-
-    
     //array of players
     address[] public players;
 
-    //mapping of players to clients
+    uint256 entryFee;
+    //mapping of players to client struct
     mapping(address => gameClient) public addressToClient;
 
     //We need a way to prove that a player has their own instance
     //lets try, creating a mapping that will associate a user with a boolean,
     //because i cant check if addressToClient returns null
     mapping(address => bool) public userHasClient;
-    
-    //start game function
-    function startGame() public {
-        
-        address player = msg.sender;
-        if (userHasClient[msg.sender] == false )
-        createClient(player, vrfCoordinator,linkToken,keyHash,fee);
-        else
-            addressToClient[msg.sender].playGame();
-    }
-    
-    //create client function
-    function createClient(address _player, address _vrfCoordinator,address _linkToken, bytes32 _keyHash, uint256 _fee) internal {
-        //creates new game client instance
-        // need to add a check that assures it doesn't fail
-        gameClient newGameClient = new gameClient(_player, _vrfCoordinator,_linkToken,_keyHash,_fee);
-        addressToClient[msg.sender] = newGameClient;
 
-        //sets userHasClient to true
-        userHasClient[msg.sender] == true;
+    //Chainlink variables to pass onto the client structs
+    VRFCoordinatorV2Interface COORDINATOR;
+        // Your subscription ID.
+    uint64 s_subscriptionId;
+        //vrfCoordinator address of VRFCoordinator contract
+    address public vrfCoordinator;
+    // ID of public key against which randomness is generated
+    bytes32 public keyHash;
+
+    // Depends on the number of requested values that you want sent to the
+    // fulfillRandomWords() function. Storing each word costs about 20,000 gas,
+    // so 100,000 is a safe default for this example contract. Test and adjust
+    // this limit based on the network that you select, the size of the request,
+    // and the processing of the callback request in the fulfillRandomWords()
+    // function.
+    uint32 callbackGasLimit = 100000;
+
+        // The default is 3, but you can set this higher.
+    uint16 requestConfirmations = 3;
+
+      //number of random words  
+    uint32 numWords = 3;
+
+    uint256 public s_requestId;
+
+    constructor(uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
+    COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
+    s_subscriptionId = subscriptionId;
+    vrfCoordinator = _vrfCoordinator;
+    keyHash = _keyHash;
+  }
+
+  
+    // Assumes the subscription is funded sufficiently.
+  function requestRandomWords() internal {
+    // Will revert if subscription is not set and funded.
+    s_requestId = COORDINATOR.requestRandomWords(
+      keyHash,
+      s_subscriptionId,
+      requestConfirmations,
+      callbackGasLimit,
+      numWords
+    );
+  }
+
+     //gets random numbers
+  function fulfillRandomWords(
+    uint256, 
+    uint256[] memory randomWords
+  ) internal override {
+   addressToClient[msg.sender].s_randomWords = (randomWords[0] % [5]);
+  }
+
+    //gameClient struct
+    struct gameClient {
+    uint256[] s_randomWords;
+    //slots
+    uint256 slot1;
+    uint256 slot2;
+    uint256 slot3;
+    uint256 winnings;
+    bool gameActive;
     }
 
     // play game function
     // will use this function which calls functions in the user's client
     function playGame() public payable {
+        require(msg.value == entryFee);
+        requestRandomWords();
+        fulfillRandomWords(s_requestId, addressToClient[msg.sender].s_randomWords);
+
 
     }
 
-
-    //function to send winnings to players (will modify later)
+    //function to send winnings to players (will fix later)
     // send the ether in the contract to the winner
     //(bool sent,) = winner.call{value: address(this).balance}("");
     // require(sent, "Failed to send Ether");
 
     // Function to receive Ether. msg.data must be empty
-    receive() external payable {}
+   // receive() external payable {}
     // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
+   // fallback() external payable {}
 
 }
-
-
-contract gameClient is VRFConsumerBase {
-
-    // The amount of LINK to send with the request
-    uint256 public fee;
-    // ID of public key against which randomness is generated
-    bytes32 public keyHash;
-    address public player;
-
-    // indicates if the game is active or not to you know,
-    //prevent people from cashing out infinitely
-    bool gameActive;
-    // the fees for entering the game
-    uint256 entryFee;
-    //winnings to the player
-    uint256 public winnings;
-
-
-   constructor(address _player, address _vrfCoordinator, address _linkToken,
-    bytes32 vrfKeyHash, uint256 vrfFee)
-    VRFConsumerBase(_vrfCoordinator, _linkToken) {
-        keyHash = vrfKeyHash;
-        fee = vrfFee;
-        player = _player;
-    }
-    // Two helper contracts to receive the 2 of 3 random numbers
-    randomReceiver randomReceiver1 = new randomReceiver();
-    randomReceiver randomReceiver2 = new randomReceiver();
-
-    /**
-    * fulfillRandomness is called by VRFCoordinator when it receives a valid VRF proof.
-    * This function is overrided to act upon the random number generated by Chainlink VRF.
-    * @param requestId  this ID is unique for the request we sent to the VRF Coordinator
-    * @param randomness this is a random unit256 generated and returned to us by the VRF Coordinator
-   */
-   //gets first random number
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal virtual override  {
-        uint256 slot1 = randomness % 2;
-    
-    }
-
-    function playGame() public returns (bytes32 requestId)  {
-        //only lets owner play the game
-        require(msg.sender == player);
-        // LINK is an internal interface for Link token found within the VRFConsumerBase
-        // Here we use the balanceOF method from that interface to make sure that our
-        // contract has enough link so that we can request the VRFCoordinator for randomness
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
-        // Make a request to the VRF coordinator.
-        // requestRandomness is a function within the VRFConsumerBase
-        // it starts the process of randomness generation
-        return requestRandomness(keyHash, fee);
-    }
-
-
-
-    // Function to receive Ether. msg.data must be empty
-    receive() external payable {}
-    // Fallback function is called when msg.data is not empty
-    fallback() external payable {}
-
-    }
-
-
-
-
-
-
-
-
-    contract randomReceiver is VRFConsumerBase {
-    // The amount of LINK to send with the request
-    uint256 public fee;
-    // ID of public key against which randomness is generated
-    bytes32 public keyHash;
-
-    constructor(address _player, address _vrfCoordinator, address _linkToken,
-    bytes32 vrfKeyHash, uint256 vrfFee)
-    VRFConsumerBase(_vrfCoordinator, _linkToken) {
-        keyHash = vrfKeyHash;
-        fee = vrfFee;
-
-    }
-
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal virtual override  {
-    uint256 slot1 = randomness % 2;
-     
-    }
-
-    function makeRequest() public returns (bytes32 requestId)  {
-        //only lets owner play the game
-       
-        // LINK is an internal interface for Link token found within the VRFConsumerBase
-        // Here we use the balanceOF method from that interface to make sure that our
-        // contract has enough link so that we can request the VRFCoordinator for randomness
-        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
-        // Make a request to the VRF coordinator.
-        // requestRandomness is a function within the VRFConsumerBase
-        // it starts the process of randomness generation
-        return requestRandomness(keyHash, fee);
-    }
-
-    }
