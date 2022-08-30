@@ -20,6 +20,8 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 // Each client will serve as a game client for the user
 // I am doing this so there can be an unlimited number of game instances
 
+//we need 3 random numbers, but can only get 1 truly random number
+// I think i will try adding 2 extra helper contracts to give 3 truly random numbers
 // how to play
 // 1. player will use startGame() to play
 // 2. in startGame(), if player does not have a client, a client will be made
@@ -67,17 +69,19 @@ contract SlotMachineRouter is Ownable {
     
     //start game function
     function startGame() public {
+        
+        address player = msg.sender;
         if (userHasClient[msg.sender] == false )
-        createClient(vrfCoordinator,linkToken,keyHash,fee);
+        createClient(player, vrfCoordinator,linkToken,keyHash,fee);
         else
             addressToClient[msg.sender].playGame();
     }
     
     //create client function
-    function createClient(address _vrfCoordinator,address _linkToken, bytes32 _keyHash, uint256 _fee) internal {
+    function createClient(address _player, address _vrfCoordinator,address _linkToken, bytes32 _keyHash, uint256 _fee) internal {
         //creates new game client instance
         // need to add a check that assures it doesn't fail
-        gameClient newGameClient = new gameClient(_vrfCoordinator,_linkToken,_keyHash,_fee);
+        gameClient newGameClient = new gameClient(_player, _vrfCoordinator,_linkToken,_keyHash,_fee);
         addressToClient[msg.sender] = newGameClient;
 
         //sets userHasClient to true
@@ -110,19 +114,27 @@ contract gameClient is VRFConsumerBase {
     uint256 public fee;
     // ID of public key against which randomness is generated
     bytes32 public keyHash;
+    address public player;
 
-   constructor(address _vrfCoordinator, address _linkToken,
+    // indicates if the game is active or not to you know,
+    //prevent people from cashing out infinitely
+    bool gameActive;
+    // the fees for entering the game
+    uint256 entryFee;
+    //winnings to the player
+    uint256 public winnings;
+
+
+   constructor(address _player, address _vrfCoordinator, address _linkToken,
     bytes32 vrfKeyHash, uint256 vrfFee)
     VRFConsumerBase(_vrfCoordinator, _linkToken) {
         keyHash = vrfKeyHash;
         fee = vrfFee;
+        player = _player;
     }
-
-     // the fees for entering the game
-    uint256 entryFee;
-    //winnings to the player
-    uint256 public winnings;
-    address public player;
+    // Two helper contracts to receive the 2 of 3 random numbers
+    randomReceiver randomReceiver1 = new randomReceiver();
+    randomReceiver randomReceiver2 = new randomReceiver();
 
     /**
     * fulfillRandomness is called by VRFCoordinator when it receives a valid VRF proof.
@@ -130,15 +142,15 @@ contract gameClient is VRFConsumerBase {
     * @param requestId  this ID is unique for the request we sent to the VRF Coordinator
     * @param randomness this is a random unit256 generated and returned to us by the VRF Coordinator
    */
+   //gets first random number
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal virtual override  {
- 
         uint256 slot1 = randomness % 2;
-        uint256 slot2 = randomness % 3;
-        uint256 slot3 = randomness % 4;
-
+    
     }
 
-    function playGame() public returns (bytes32 requestId) {
+    function playGame() public returns (bytes32 requestId)  {
+        //only lets owner play the game
+        require(msg.sender == player);
         // LINK is an internal interface for Link token found within the VRFConsumerBase
         // Here we use the balanceOF method from that interface to make sure that our
         // contract has enough link so that we can request the VRFCoordinator for randomness
@@ -160,3 +172,41 @@ contract gameClient is VRFConsumerBase {
 
 
 
+
+
+
+
+
+    contract randomReceiver is VRFConsumerBase {
+    // The amount of LINK to send with the request
+    uint256 public fee;
+    // ID of public key against which randomness is generated
+    bytes32 public keyHash;
+
+    constructor(address _player, address _vrfCoordinator, address _linkToken,
+    bytes32 vrfKeyHash, uint256 vrfFee)
+    VRFConsumerBase(_vrfCoordinator, _linkToken) {
+        keyHash = vrfKeyHash;
+        fee = vrfFee;
+
+    }
+
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal virtual override  {
+    uint256 slot1 = randomness % 2;
+     
+    }
+
+    function makeRequest() public returns (bytes32 requestId)  {
+        //only lets owner play the game
+       
+        // LINK is an internal interface for Link token found within the VRFConsumerBase
+        // Here we use the balanceOF method from that interface to make sure that our
+        // contract has enough link so that we can request the VRFCoordinator for randomness
+        require(LINK.balanceOf(address(this)) >= fee, "Not enough LINK");
+        // Make a request to the VRF coordinator.
+        // requestRandomness is a function within the VRFConsumerBase
+        // it starts the process of randomness generation
+        return requestRandomness(keyHash, fee);
+    }
+
+    }
