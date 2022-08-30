@@ -41,10 +41,9 @@ contract SlotMachineRouter is Ownable {
     //linkToken address of LINK token contract
     address public linkToken;
 
-   
+
    //constructor inherits a VRFConsumerBase and initiates the values for keyHash, 
    //fee 
-
     constructor(address _vrfCoordinator, address _linkToken,
     bytes32 vrfKeyHash, uint256 vrfFee)
     {
@@ -71,16 +70,14 @@ contract SlotMachineRouter is Ownable {
         if (userHasClient[msg.sender] == false )
         createClient(vrfCoordinator,linkToken,keyHash,fee);
         else
-            //playGame();
-        
+            addressToClient[msg.sender].playGame();
     }
     
     //create client function
-    function createClient(address _vrfCoordinator,address _linkToken, bytes32 _keyHash,_fee) internal {
+    function createClient(address _vrfCoordinator,address _linkToken, bytes32 _keyHash, uint256 _fee) internal {
         //creates new game client instance
         // need to add a check that assures it doesn't fail
         gameClient newGameClient = new gameClient(_vrfCoordinator,_linkToken,_keyHash,_fee);
-
         addressToClient[msg.sender] = newGameClient;
 
         //sets userHasClient to true
@@ -89,7 +86,7 @@ contract SlotMachineRouter is Ownable {
 
     // play game function
     // will use this function which calls functions in the user's client
-    function play() public payable {
+    function playGame() public payable {
 
     }
 
@@ -101,7 +98,6 @@ contract SlotMachineRouter is Ownable {
 
     // Function to receive Ether. msg.data must be empty
     receive() external payable {}
-
     // Fallback function is called when msg.data is not empty
     fallback() external payable {}
 
@@ -123,19 +119,10 @@ contract gameClient is VRFConsumerBase {
     }
 
      // the fees for entering the game
-    uint256 immutable entryFee;
-
+    uint256 entryFee;
     //winnings to the player
     uint256 public winnings;
-
     address public player;
-
-
-    //the function that is called by the router contract
-    function playGame() private {
-        require(msg.value == entryFee, "Value sent is not equal to entryFee");
-        
-    }
 
     /**
     * fulfillRandomness is called by VRFCoordinator when it receives a valid VRF proof.
@@ -151,7 +138,7 @@ contract gameClient is VRFConsumerBase {
 
     }
 
-    function play() private returns (bytes32 requestId) {
+    function playGame() public returns (bytes32 requestId) {
         // LINK is an internal interface for Link token found within the VRFConsumerBase
         // Here we use the balanceOF method from that interface to make sure that our
         // contract has enough link so that we can request the VRFCoordinator for randomness
@@ -166,14 +153,10 @@ contract gameClient is VRFConsumerBase {
 
     // Function to receive Ether. msg.data must be empty
     receive() external payable {}
-
     // Fallback function is called when msg.data is not empty
     fallback() external payable {}
 
-
-
     }
-
 
 
 
