@@ -14,12 +14,15 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 // setup
 // Owner will fund contract with ETH
 // Owner will set up Chainlink VRF subscription and fund with LINK
+// There is a structure/ i can possibly use mappings instead, for each player to save certain data.
 
-// I think i will try adding 2 extra helper contracts to give 3 truly random numbers
+
 // how to play
 // 1. player will use startGame() to play
 // 2. in startGame(), if player does not have a client, a client will be made
-// 3. if a client is made, continue
+// 3. if a client is made, then the game will start
+// 4. 3 verifiably random numbers are produced and determine each slot's position
+// 5. if the player wins, then winnings will be sent directly to their wallet or we can make a credit system or whatever
 
 
 contract SlotMachineRouter is VRFConsumerBaseV2{
@@ -60,7 +63,8 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
       //number of random words  
     uint32 numWords = 3;
 
-    uint256 public s_requestId;
+    //mapping to reference the address in fulfillrandomwords()
+    mapping(uint256 => address) public s_requestIdToAddress;
 
     constructor(uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
     COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
@@ -73,17 +77,19 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     // Assumes the subscription is funded sufficiently.
   function requestRandomWords() internal {
     // Will revert if subscription is not set and funded.
-    s_requestId = COORDINATOR.requestRandomWords(
+    uint256 requestId = COORDINATOR.requestRandomWords(
       keyHash,
       s_subscriptionId,
       requestConfirmations,
       callbackGasLimit,
       numWords
     );
+    s_requestIdToAddress[requestId] = msg.sender;
   }
 
 
     //gameClient struct
+    //need to store slots for front end
     struct gameClient {
     //slots
     uint256 slot1;
@@ -91,19 +97,54 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     uint256 slot3;
     uint256 winnings;
     bool gameActive;
+    
     }
 
   function fulfillRandomWords(
-    uint256, /*RequestId*/
+    uint256 requestId, 
     uint256[] memory randomWords
   ) internal override {
+
     //Get random words
-   addressToClient[msg.sender].slot1 = randomWords[0];
-   addressToClient[msg.sender].slot2 = randomWords[1];
-   addressToClient[msg.sender].slot3 = randomWords[2];
+
+    uint256 slot1 = randomWords[0];
+    uint256 slot2 = randomWords[1];
+    uint256 slot3 = randomWords[2];
+  
+
 
    //The Game
-   
+   if (slot1 == 1 && slot2 == 1 && slot3 == 1) {
+       
+   } 
+   else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 1) ) {
+       //if two 1's are next to eachother
+   }
+   else if(slot1 == 2 && slot2 == 2 && slot3 == 2) {
+       //Jackpot 2
+   }
+   else if((slot1 == 2 && slot2 == 2) || (slot2 == 2 && slot3 == 2) ){
+       //if two 2's are next to eachother
+   }
+   else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
+       //Jackpot 3
+   }
+   else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
+       //if two 3's are next to eachother
+   }
+   else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
+     //Jackpot 4
+   }
+   else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
+       //if two 4's are next to eachother
+   }
+   else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
+    //Jackpot 5
+   }
+   else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
+       //if two 5's are next to eachother
+   }
+
 
   }
 
@@ -112,7 +153,9 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     function playGame() public payable {
         require(msg.value == entryFee);
         requestRandomWords();
-        //fulfill random words will complete game
+        //fulfill random words()
+        
+
     }
 
     //function to send winnings to players (will fix later)
