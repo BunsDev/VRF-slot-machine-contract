@@ -82,17 +82,9 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     );
   }
 
-     //gets random numbers
-  function fulfillRandomWords(
-    uint256, 
-    uint256[] memory randomWords
-  ) internal override {
-   addressToClient[msg.sender].s_randomWords = (randomWords[0] % [5]);
-  }
 
     //gameClient struct
     struct gameClient {
-    uint256[] s_randomWords;
     //slots
     uint256 slot1;
     uint256 slot2;
@@ -101,14 +93,26 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     bool gameActive;
     }
 
+  function fulfillRandomWords(
+    uint256, /*RequestId*/
+    uint256[] memory randomWords
+  ) internal override {
+    //Get random words
+   addressToClient[msg.sender].slot1 = randomWords[0];
+   addressToClient[msg.sender].slot2 = randomWords[1];
+   addressToClient[msg.sender].slot3 = randomWords[2];
+
+   //The Game
+   
+
+  }
+
     // play game function
     // will use this function which calls functions in the user's client
     function playGame() public payable {
         require(msg.value == entryFee);
         requestRandomWords();
-        fulfillRandomWords(s_requestId, addressToClient[msg.sender].s_randomWords);
-
-
+        //fulfill random words will complete game
     }
 
     //function to send winnings to players (will fix later)
