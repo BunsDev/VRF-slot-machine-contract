@@ -76,8 +76,16 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
     // play game function
     function playGame() public payable {
+
         //require entry fee is paid
         require(msg.value == entryFee);
+
+        //reset mappings for the frontend
+        addressToSlot1[msg.sender] = 0;
+        addressToSlot2[msg.sender] = 0;
+        addressToSlot3[msg.sender] = 0;
+        addressToBalance[msg.sender] = 0;
+
 
         //request random numbers
         requestRandomWords();
@@ -112,7 +120,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
         // The default is 3, but you can set this higher.
     uint16 requestConfirmations = 3;
 
-      //number of random words  
+      //number of random numbers  
     uint32 numWords = 3;
 
     //mapping to reference the address in fulfillrandomwords()
@@ -145,11 +153,15 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 
     address payable player = payable(s_requestIdToAddress[requestId]);
 
-    //Get random words
+    //Get random words between 1 and 5
+    uint256 slot1 = (randomWords[0] % 5) + 1;
+    uint256 slot2 = (randomWords[1] % 5) + 1;
+    uint256 slot3 = (randomWords[2] % 5) + 1;
 
-    uint256 slot1 = randomWords[0];
-    uint256 slot2 = randomWords[1];
-    uint256 slot3 = randomWords[2];
+    //sets the frontend mappings
+    addressToSlot1[s_requestIdToAddress[requestId]] = slot1;
+    addressToSlot2[s_requestIdToAddress[requestId]] = slot2;
+    addressToSlot3[s_requestIdToAddress[requestId]] = slot3;
 
    //The Game
    if (slot1 == 1 && slot2 == 1 && slot3 == 1) {
@@ -165,26 +177,32 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
    else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
        //Jackpot #3
        player.transfer(1 ether);
+       addressToBalance[msg.sender] = 1 ether;
    }
    else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
        //if two 3's are next to eachother
        player.transfer(0.5 ether);
+       addressToBalance[msg.sender] = 0.5 ether;
    }
    else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
      //Jackpot #4
        player.transfer(1 ether);
+       addressToBalance[msg.sender] = 1 ether;
    }
    else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
        //if two 4's are next to eachother
        player.transfer(0.5 ether);
+       addressToBalance[msg.sender] = 0.5 ether;
    }
    else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
     //Jackpot #5
        player.transfer(1 ether);
+       addressToBalance[msg.sender] = 1 ether;
    }
    else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
        //if two 5's are next to eachother
       player.transfer(0.5 ether);
+      addressToBalance[msg.sender] = 0.5 ether;
    }
    else{
        
@@ -196,6 +214,30 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 /*♥*♡∞:｡.｡♥*♡∞:｡.｡♥*♡∞:｡.｡　END OF FULFILL RANDOM WORDS　｡.｡:∞♡*♥｡.｡:∞♡*♥｡.｡:∞♡*♥ */
 
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　END OF CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
+
+
+    /* Some data to help the frontend */
+    mapping (address => uint256) addressToSlot1;
+    mapping (address => uint256) addressToSlot2;
+    mapping (address => uint256) addressToSlot3;
+    mapping (address => uint256) addressToBalance;
+
+    function getSlot1(address _address) public view returns (uint256) {
+        return addressToSlot1[_address];
+    }
+
+    function getSlot2(address _address) public view returns (uint256) {
+        return addressToSlot2[_address];
+    }
+
+    function getSlot3(address _address) public view returns (uint256) {
+        return addressToSlot3[_address];
+    }
+
+        function getBalance(address _address) public view returns (uint256) {
+        return addressToBalance[_address];
+    }
+    
 
 
     // Function to receive Ether. msg.data must be empty
