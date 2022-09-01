@@ -81,10 +81,10 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
         require(msg.value == entryFee);
 
         //reset mappings for the frontend
-        addressToSlot1[msg.sender] = 0;
-        addressToSlot2[msg.sender] = 0;
-        addressToSlot3[msg.sender] = 0;
-        addressToBalance[msg.sender] = 0;
+        delete addressToSlot1[msg.sender];
+        delete addressToSlot2[msg.sender];
+        delete addressToSlot3[msg.sender];
+        delete addressToBalance[msg.sender];
 
 
         //request random numbers
@@ -100,7 +100,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 
 
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
-    //Chainlink variables to pass onto the client structs
+    // initialize coordinator
     VRFCoordinatorV2Interface COORDINATOR;
         // Your subscription ID.
     uint64 s_subscriptionId;
