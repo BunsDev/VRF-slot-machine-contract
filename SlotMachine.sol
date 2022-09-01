@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.0;
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 /*
-
-
+Made by Josh
                               .-------.
                               |Jackpot|
                   ____________|_______|____________
@@ -57,20 +56,13 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 // we can make a credit system or whatever
 
 
-contract SlotMachineRouter is VRFConsumerBaseV2{
-
-
-    //owner of contract
-    address owner = msg.sender;
+contract SlotMachineRouter is VRFConsumerBaseV2, Ownable{
 
     //entry fee to play
     uint256 entryFee = 0.01 ether;
 
     //We need a way to prove that a player has their own instance
     mapping(address => bool) public userHasPlayedOnce;
-
-    //user balance mapping
-   // mapping(address => uint256) public addressToBalance;
 
 
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
@@ -86,7 +78,6 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
         delete addressToSlot3[msg.sender];
         delete addressToBalance[msg.sender];
 
-
         //request random numbers
         requestRandomWords();
         //fullFillRandomWords() is called by Chainlink which completes our game
@@ -95,12 +86,9 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　End of game　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
 
 
-    
-
-
 
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
-    // initialize coordinator
+    //coordinator object
     VRFCoordinatorV2Interface COORDINATOR;
         // Your subscription ID.
     uint64 s_subscriptionId;
@@ -165,48 +153,59 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 
    //The Game
    if (slot1 == 1 && slot2 == 1 && slot3 == 1) {
-       //Jackpot #1
-      player.transfer(1 ether);
-
-   }
-   else if((slot1 == 2 && slot2 == 2) || (slot2 == 2 && slot3 == 2) ){
-       //if two 2's are next to eachother
-       player.transfer(0.5 ether);
-  
-   }
-   else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
-       //Jackpot #3
-       player.transfer(1 ether);
-       addressToBalance[msg.sender] = 1 ether;
-   }
-   else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
-       //if two 3's are next to eachother
-       player.transfer(0.5 ether);
-       addressToBalance[msg.sender] = 0.5 ether;
-   }
-   else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
-     //Jackpot #4
-       player.transfer(1 ether);
-       addressToBalance[msg.sender] = 1 ether;
-   }
-   else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
-       //if two 4's are next to eachother
-       player.transfer(0.5 ether);
-       addressToBalance[msg.sender] = 0.5 ether;
-   }
-   else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
+    //Jackpot #1
+    player.transfer(1 ether);
+    addressToBalance[msg.sender] = 1 ether;
+  }
+  else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 2) )
+  {
+    //if two 1's are next to eachother
+    player.transfer(0.5 ether);
+    addressToBalance[msg.sender] = 0.5 ether;
+  }
+  else if(slot1 == 2 && slot2 == 2 && slot3 == 2) {
+    //Jackpot #2
+    player.transfer(1 ether);
+    addressToBalance[msg.sender] = 1 ether;
+  }
+  else if((slot1 == 2 && slot2 == 2) || (slot2 == 2 && slot3 == 2) ){
+    //if two 2's are next to eachother
+    player.transfer(0.5 ether);
+    addressToBalance[msg.sender] = 0.5 ether;
+  }
+  else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
+    //Jackpot #3
+    player.transfer(1 ether);
+    addressToBalance[msg.sender] = 1 ether;
+  }
+  else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
+    //if two 3's are next to eachother
+    player.transfer(0.5 ether);
+    addressToBalance[msg.sender] = 0.5 ether;
+  }
+  else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
+    //Jackpot #4
+    player.transfer(1 ether);
+    addressToBalance[msg.sender] = 1 ether;
+  }
+  else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
+    //if two 4's are next to eachother
+    player.transfer(0.5 ether);
+    addressToBalance[msg.sender] = 0.5 ether;
+  }
+  else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
     //Jackpot #5
-       player.transfer(1 ether);
-       addressToBalance[msg.sender] = 1 ether;
-   }
-   else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
-       //if two 5's are next to eachother
-      player.transfer(0.5 ether);
-      addressToBalance[msg.sender] = 0.5 ether;
-   }
-   else{
+    player.transfer(1 ether);
+    addressToBalance[msg.sender] = 1 ether;
+  }
+  else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
+    //if two 5's are next to eachother
+    player.transfer(0.5 ether);
+    addressToBalance[msg.sender] = 0.5 ether;
+  }
+  else{
        
-   }
+  }
 
 
   }
@@ -215,7 +214,6 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
 
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　END OF CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
 
-
     /* Some data to help the frontend */
     mapping (address => uint256) addressToSlot1;
     mapping (address => uint256) addressToSlot2;
@@ -223,23 +221,21 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     mapping (address => uint256) addressToBalance;
 
     function getSlot1(address _address) public view returns (uint256) {
-        return addressToSlot1[_address];
+      return addressToSlot1[_address];
     }
 
     function getSlot2(address _address) public view returns (uint256) {
-        return addressToSlot2[_address];
+      return addressToSlot2[_address];
     }
 
     function getSlot3(address _address) public view returns (uint256) {
-        return addressToSlot3[_address];
+      return addressToSlot3[_address];
     }
 
-        function getBalance(address _address) public view returns (uint256) {
-        return addressToBalance[_address];
+    function getBalance(address _address) public view returns (uint256) {
+      return addressToBalance[_address];
     }
     
-
-
     // Function to receive Ether. msg.data must be empty
    receive() external payable {}
     // Fallback function is called when msg.data is not empty
