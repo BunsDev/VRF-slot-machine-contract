@@ -5,41 +5,93 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 
 
-/*************************************************/
-/* This contract will act as the treasury and */
-/* manager of all the game clients */
-/*************************************************/
+/*
+
+
+                              .-------.
+                              |Jackpot|
+                  ____________|_______|____________
+                 |  __    __    ___  _____   __    |  
+                 | / _\  / /   /___\/__   \ / _\   | 
+                 | \ \  / /   //  //  / /\ \\ \  25|  
+                 | _\ \/ /___/ \_//  / /  \/_\ \ []| 
+                 | \__/\____/\___/   \/     \__/ []|
+                 |===_______===_______===_______===|
+                 ||*|\_     |*| _____ |*|\_     |*||
+                 ||*|| \ _  |*||     ||*|| \ _  |*||
+                 ||*| \_(_) |*||*BAR*||*| \_(_) |*||
+                 ||*| (_)   |*||_____||*| (_)   |*|| __
+                 ||*|_______|*|_______|*|_______|*||(__)
+                 |===_______===_______===_______===| ||
+                 ||*| _____ |*|\_     |*|  ___  |*|| ||
+                 ||*||     ||*|| \ _  |*| |_  | |*|| ||
+                 ||*||*BAR*||*| \_(_) |*|  / /  |*|| ||
+                 ||*||_____||*| (_)   |*| /_/   |*|| ||
+                 ||*|_______|*|_______|*|_______|*||_//
+                 |===_______===_______===_______===|_/
+                 ||*|  ___  |*|   |   |*| _____ |*||
+                 ||*| |_  | |*|  / \  |*||     ||*||
+                 ||*|  / /  |*| /_ _\ |*||*BAR*||*||              
+                 ||*| /_/   |*|   O   |*||_____||*||        
+                 ||*|_______|*|_______|*|_______|*||
+                 |lc=___________________________===|
+                 |  /___________________________\  |
+                 |   |                         |   |
+                _|    \_______________________/    |_
+               (_____________________________________)
+
+
+
+*/
 
 
 // setup
 // Owner will fund contract with ETH
 // Owner will set up Chainlink VRF subscription and fund with LINK
-// There is a structure/ i can possibly use mappings instead, for each player to save certain data.
 
 
 // how to play
 // 1. player will use startGame() to play
-// 2. in startGame(), if player does not have a client, a client will be made
-// 3. if a client is made, then the game will start
-// 4. 3 verifiably random numbers are produced and determine each slot's position
-// 5. if the player wins, then winnings will be sent directly to their wallet or we can make a credit system or whatever
+// 2. 3 verifiably random numbers are produced and determine each slot's position
+// 3. if the player wins, then winnings will be sent directly to their wallet or 
+// we can make a credit system or whatever
 
 
 contract SlotMachineRouter is VRFConsumerBaseV2{
+
+
+    //owner of contract
     address owner = msg.sender;
 
-    //array of players
-    address[] public players;
-
-    uint256 entryFee;
-    //mapping of players to client struct
-    mapping(address => gameClient) public addressToClient;
+    //entry fee to play
+    uint256 entryFee = 0.01 ether;
 
     //We need a way to prove that a player has their own instance
-    //lets try, creating a mapping that will associate a user with a boolean,
-    //because i cant check if addressToClient returns null
-    mapping(address => bool) public userHasClient;
+    mapping(address => bool) public userHasPlayedOnce;
 
+    //user balance mapping
+   // mapping(address => uint256) public addressToBalance;
+
+
+/* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
+    // play game function
+    function playGame() public payable {
+        //require entry fee is paid
+        require(msg.value == entryFee);
+
+        //request random numbers
+        requestRandomWords();
+        //fullFillRandomWords() is called by Chainlink which completes our game
+        
+    }
+/* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　End of game　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
+
+
+    
+
+
+
+/* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
     //Chainlink variables to pass onto the client structs
     VRFCoordinatorV2Interface COORDINATOR;
         // Your subscription ID.
@@ -72,8 +124,6 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
     vrfCoordinator = _vrfCoordinator;
     keyHash = _keyHash;
   }
-
-  
     // Assumes the subscription is funded sufficiently.
   function requestRandomWords() internal {
     // Will revert if subscription is not set and funded.
@@ -84,88 +134,73 @@ contract SlotMachineRouter is VRFConsumerBaseV2{
       callbackGasLimit,
       numWords
     );
+    //mapping to pass address over to fulfillRandomWords
     s_requestIdToAddress[requestId] = msg.sender;
   }
-
-
-    //gameClient struct
-    //need to store slots for front end
-    struct gameClient {
-    //slots
-    uint256 slot1;
-    uint256 slot2;
-    uint256 slot3;
-    uint256 winnings;
-    bool gameActive;
-    
-    }
-
+/*♥*♡∞:｡.｡♥*♡∞:｡.｡♥*♡∞:｡.｡　FULFILL RANDOM WORDS　｡.｡:∞♡*♥｡.｡:∞♡*♥｡.｡:∞♡*♥       < ---------- */
   function fulfillRandomWords(
     uint256 requestId, 
     uint256[] memory randomWords
   ) internal override {
+
+    address payable player = payable(s_requestIdToAddress[requestId]);
 
     //Get random words
 
     uint256 slot1 = randomWords[0];
     uint256 slot2 = randomWords[1];
     uint256 slot3 = randomWords[2];
-  
-
 
    //The Game
    if (slot1 == 1 && slot2 == 1 && slot3 == 1) {
-       
-   } 
-   else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 1) ) {
-       //if two 1's are next to eachother
-   }
-   else if(slot1 == 2 && slot2 == 2 && slot3 == 2) {
-       //Jackpot 2
+       //Jackpot #1
+      player.transfer(1 ether);
+
    }
    else if((slot1 == 2 && slot2 == 2) || (slot2 == 2 && slot3 == 2) ){
        //if two 2's are next to eachother
+       player.transfer(0.5 ether);
+  
    }
    else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
-       //Jackpot 3
+       //Jackpot #3
+       player.transfer(1 ether);
    }
    else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
        //if two 3's are next to eachother
+       player.transfer(0.5 ether);
    }
    else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
-     //Jackpot 4
+     //Jackpot #4
+       player.transfer(1 ether);
    }
    else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
        //if two 4's are next to eachother
+       player.transfer(0.5 ether);
    }
    else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
-    //Jackpot 5
+    //Jackpot #5
+       player.transfer(1 ether);
    }
    else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
        //if two 5's are next to eachother
+      player.transfer(0.5 ether);
+   }
+   else{
+       
    }
 
 
   }
 
-    // play game function
-    // will use this function which calls functions in the user's client
-    function playGame() public payable {
-        require(msg.value == entryFee);
-        requestRandomWords();
-        //fulfill random words()
-        
+/*♥*♡∞:｡.｡♥*♡∞:｡.｡♥*♡∞:｡.｡　END OF FULFILL RANDOM WORDS　｡.｡:∞♡*♥｡.｡:∞♡*♥｡.｡:∞♡*♥ */
 
-    }
+/* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　END OF CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
 
-    //function to send winnings to players (will fix later)
-    // send the ether in the contract to the winner
-    //(bool sent,) = winner.call{value: address(this).balance}("");
-    // require(sent, "Failed to send Ether");
 
     // Function to receive Ether. msg.data must be empty
-   // receive() external payable {}
+   receive() external payable {}
     // Fallback function is called when msg.data is not empty
-   // fallback() external payable {}
+   fallback() external payable {}
 
 }
