@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /*
 Made by Josh
@@ -54,16 +55,20 @@ Made by Josh
 // we can make a credit system or whatever
 
 
-contract SlotMachineRouter is VRFConsumerBaseV2 {
+contract SlotMachineRouter is VRFConsumerBaseV2  {
 
   //owner of contract
   address payable public owner;
   //entry fee to play
   uint256 entryFee = 0.01 ether;
 
-  //We need a way to prove that a player has their own instance
-  mapping(address => bool) public userHasPlayedOnce;
-
+  constructor(uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
+    COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
+    s_subscriptionId = subscriptionId;
+    vrfCoordinator = _vrfCoordinator;
+    keyHash = _keyHash;
+    owner = payable(msg.sender);
+  }
 
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
     // play game function
@@ -87,6 +92,26 @@ contract SlotMachineRouter is VRFConsumerBaseV2 {
 
 
 
+// =!=!=!=!=!=!=!=!=!=! CHAINLINK PricefeedV3 St00f =!=!=!=!=!=!=!=!=!=!=!=!=!=!=!
+
+  AggregatorV3Interface internal priceFeed;
+  function getLatestPrice() public view returns (int) {
+        (,int price,,,) = priceFeed.latestRoundData();
+        return price;
+  }
+
+  
+  function getEntryFee() external view returns (uint256) {
+    //get the price of eth
+    uint256 ETHPrice = uint(getLatestPrice());
+    
+  }
+
+
+
+//=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!
+
+  
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
     //coordinator object
     VRFCoordinatorV2Interface COORDINATOR;
@@ -114,13 +139,6 @@ contract SlotMachineRouter is VRFConsumerBaseV2 {
     //mapping to reference the address in fulfillrandomwords()
     mapping(uint256 => address) public s_requestIdToAddress;
 
-    constructor(uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
-    COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
-    s_subscriptionId = subscriptionId;
-    vrfCoordinator = _vrfCoordinator;
-    keyHash = _keyHash;
-    owner = payable(msg.sender);
-  }
     // Assumes the subscription is funded sufficiently.
   function requestRandomWords() internal {
     // Will revert if subscription is not set and funded.
@@ -158,7 +176,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2 {
     player.transfer(1 ether);
     addressToBalance[msg.sender] = 1 ether;
   }
-  else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 2) )
+  else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 2))
   {
     //if two 1's are next to eachother
     player.transfer(0.1 ether);
@@ -207,7 +225,6 @@ contract SlotMachineRouter is VRFConsumerBaseV2 {
   else{
        
   }
-
 
   }
 
