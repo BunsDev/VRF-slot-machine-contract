@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-
 
 /*
 Made by Josh
@@ -56,31 +54,33 @@ Made by Josh
 // we can make a credit system or whatever
 
 
-contract SlotMachineRouter is VRFConsumerBaseV2, Ownable{
+contract SlotMachineRouter is VRFConsumerBaseV2 {
 
-    //entry fee to play
-    uint256 entryFee = 0.01 ether;
+  //owner of contract
+  address payable public owner;
+  //entry fee to play
+  uint256 entryFee = 0.01 ether;
 
-    //We need a way to prove that a player has their own instance
-    mapping(address => bool) public userHasPlayedOnce;
+  //We need a way to prove that a player has their own instance
+  mapping(address => bool) public userHasPlayedOnce;
 
 
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
     // play game function
     function playGame() public payable {
 
-        //require entry fee is paid
-        require(msg.value == entryFee);
+      //require entry fee is paid
+      require(msg.value == entryFee);
 
-        //reset mappings for the frontend
-        delete addressToSlot1[msg.sender];
-        delete addressToSlot2[msg.sender];
-        delete addressToSlot3[msg.sender];
-        delete addressToBalance[msg.sender];
+      //reset mappings for the frontend
+      delete addressToSlot1[msg.sender];
+      delete addressToSlot2[msg.sender];
+      delete addressToSlot3[msg.sender];
+      delete addressToBalance[msg.sender];
 
-        //request random numbers
-        requestRandomWords();
-        //fullFillRandomWords() is called by Chainlink which completes our game
+      //request random numbers
+      requestRandomWords();
+      //fullFillRandomWords() is called by Chainlink which completes our game
         
     }
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　End of game　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
@@ -119,6 +119,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2, Ownable{
     s_subscriptionId = subscriptionId;
     vrfCoordinator = _vrfCoordinator;
     keyHash = _keyHash;
+    owner = payable(msg.sender);
   }
     // Assumes the subscription is funded sufficiently.
   function requestRandomWords() internal {
@@ -160,43 +161,43 @@ contract SlotMachineRouter is VRFConsumerBaseV2, Ownable{
   else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 2) )
   {
     //if two 1's are next to eachother
-    player.transfer(0.5 ether);
-    addressToBalance[msg.sender] = 0.5 ether;
+    player.transfer(0.1 ether);
+    addressToBalance[msg.sender] = 0.1 ether;
   }
   else if(slot1 == 2 && slot2 == 2 && slot3 == 2) {
     //Jackpot #2
-    player.transfer(1 ether);
-    addressToBalance[msg.sender] = 1 ether;
+    player.transfer(2 ether);
+    addressToBalance[msg.sender] = 2 ether;
   }
   else if((slot1 == 2 && slot2 == 2) || (slot2 == 2 && slot3 == 2) ){
     //if two 2's are next to eachother
-    player.transfer(0.5 ether);
-    addressToBalance[msg.sender] = 0.5 ether;
+    player.transfer(0.2 ether);
+    addressToBalance[msg.sender] = 0.2 ether;
   }
   else if(slot1 == 3 && slot2 == 3 && slot3 == 3) {
     //Jackpot #3
-    player.transfer(1 ether);
-    addressToBalance[msg.sender] = 1 ether;
+    player.transfer(3 ether);
+    addressToBalance[msg.sender] = 3 ether;
   }
   else if((slot1 == 3 && slot2 == 3) || (slot2 == 3 && slot3 == 3) ){
     //if two 3's are next to eachother
-    player.transfer(0.5 ether);
-    addressToBalance[msg.sender] = 0.5 ether;
+    player.transfer(0.3 ether);
+    addressToBalance[msg.sender] = 0.3 ether;
   }
   else if(slot1 == 4 && slot2 == 4 && slot3 == 4) {
     //Jackpot #4
-    player.transfer(1 ether);
-    addressToBalance[msg.sender] = 1 ether;
+    player.transfer(4 ether);
+    addressToBalance[msg.sender] = 4 ether;
   }
   else if((slot1 == 4 && slot2 == 4) || (slot2 == 4 && slot3 == 4) ){
     //if two 4's are next to eachother
-    player.transfer(0.5 ether);
-    addressToBalance[msg.sender] = 0.5 ether;
+    player.transfer(0.4 ether);
+    addressToBalance[msg.sender] = 0.4 ether;
   }
   else if(slot1 == 5 && slot2 == 5 && slot3 == 5) {
     //Jackpot #5
-    player.transfer(1 ether);
-    addressToBalance[msg.sender] = 1 ether;
+    player.transfer(5 ether);
+    addressToBalance[msg.sender] = 5 ether;
   }
   else if((slot1 == 5 && slot2 == 5) || (slot2 == 5 && slot3 == 5) ){
     //if two 5's are next to eachother
