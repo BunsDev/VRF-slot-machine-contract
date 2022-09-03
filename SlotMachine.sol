@@ -5,47 +5,15 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 /*
-Made by Josh
-                              .-------.
-                              |Jackpot|
-                  ____________|_______|____________
-                 |  __    __    ___  _____   __    |  
-                 | / _\  / /   /___\/__   \ / _\   | 
-                 | \ \  / /   //  //  / /\ \\ \  25|  
-                 | _\ \/ /___/ \_//  / /  \/_\ \ []| 
-                 | \__/\____/\___/   \/     \__/ []|
-                 |===_______===_______===_______===|
-                 ||*|\_     |*| _____ |*|\_     |*||
-                 ||*|| \ _  |*||     ||*|| \ _  |*||
-                 ||*| \_(_) |*||*BAR*||*| \_(_) |*||
-                 ||*| (_)   |*||_____||*| (_)   |*|| __
-                 ||*|_______|*|_______|*|_______|*||(__)
-                 |===_______===_______===_______===| ||
-                 ||*| _____ |*|\_     |*|  ___  |*|| ||
-                 ||*||     ||*|| \ _  |*| |_  | |*|| ||
-                 ||*||*BAR*||*| \_(_) |*|  / /  |*|| ||
-                 ||*||_____||*| (_)   |*| /_/   |*|| ||
-                 ||*|_______|*|_______|*|_______|*||_//
-                 |===_______===_______===_______===|_/
-                 ||*|  ___  |*|   |   |*| _____ |*||
-                 ||*| |_  | |*|  / \  |*||     ||*||
-                 ||*|  / /  |*| /_ _\ |*||*BAR*||*||              
-                 ||*| /_/   |*|   O   |*||_____||*||        
-                 ||*|_______|*|_______|*|_______|*||
-                 |lc=___________________________===|
-                 |  /___________________________\  |
-                 |   |                         |   |
-                _|    \_______________________/    |_
-               (_____________________________________)
-
-
-
+A truly random and fair slot machine 🎰
+Made by Josh 
 */
 
 
 // setup
 // Owner will fund contract with ETH
 // Owner will set up Chainlink VRF subscription and fund with LINK
+// In constructor, owner will specify how much in dollars the game will cost to play
 
 
 // how to play
@@ -60,9 +28,11 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
   //owner of contract
   address payable public owner;
   //entry fee to play
-  uint256 entryFee = 0.01 ether;
+  uint entryFee;
 
-  constructor(uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
+  constructor(uint _entryFee, string memory _priceFeedAddress, uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
+    entryFee = _entryFee;
+    priceFeedAddress = _priceFeedAddress;
     COORDINATOR = VRFCoordinatorV2Interface(vrfCoordinator);
     s_subscriptionId = subscriptionId;
     vrfCoordinator = _vrfCoordinator;
@@ -94,19 +64,23 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
 
 // =!=!=!=!=!=!=!=!=!=! CHAINLINK PricefeedV3 St00f =!=!=!=!=!=!=!=!=!=!=!=!=!=!=!
 
+  string priceFeedAddress;
   AggregatorV3Interface internal priceFeed;
-  function getLatestPrice() public view returns (int) {
+
+  //this function calculates the cost in ether to play the game
+  //the entry fee is denominated in dollars
+  function getEntryFee() public view returns (uint) {
+        //get ETH latest price
         (,int price,,,) = priceFeed.latestRoundData();
-        return price;
-  }
+        //multiply price to prepare for division
+        uint ETHprice = uint(price*10**18);
+        //multiply dollar cost to prepare for division
+        uint minDollars = entryFee * 10 ** 18;
+        //calculate cost in ether
+        uint fee = ((minDollars*10**18)/ETHprice) * 10 ** 8;
 
-  
-  function getEntryFee() external view returns (uint256) {
-    //get the price of eth
-    uint256 ETHPrice = uint(getLatestPrice());
-    
+        return fee;
   }
-
 
 
 //=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!=!
@@ -175,6 +149,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     //Jackpot #1
     player.transfer(1 ether);
     addressToBalance[msg.sender] = 1 ether;
+
   }
   else if((slot1 == 1 && slot2 == 1) || (slot2 == 1 && slot3 == 2))
   {
@@ -232,7 +207,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
 
 /* ｡･:*:･ﾟ★,｡･:*:･ﾟ☆　END OF CHAINLINK VRF STUFF  ｡･:*:･ﾟ★,｡･:*:･ﾟ☆｡･:*:･ﾟ★,｡･:*:･ﾟ☆　　 ｡･:*:･ﾟ★,｡･:*:･ﾟ☆*/
 
-    /* Some data to help the frontend */
+    /* ============Some data to help the frontend =====================*/
     mapping (address => uint256) addressToSlot1;
     mapping (address => uint256) addressToSlot2;
     mapping (address => uint256) addressToSlot3;
@@ -253,6 +228,23 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     function getBalance(address _address) public view returns (uint256) {
       return addressToBalance[_address];
     }
+
+    //==================================================================
+
+    //events 🎪
+    event GameStarted(address indexed _from, uint _value);
+    event Jackpot1(address indexed _from);
+    event Two1s(address indexed _from);
+    event Jackpot2(address indexed _from);
+    event Two2s(address indexed _from);
+    event Jackpot3(address indexed _from);
+    event Two3s(address indexed _from);
+    event Jackpot4(address indexed _from);
+    event Two4s(address indexed _from);
+    event Jackpot5(address indexed _from);
+    event Two5s(address indexed _from);
+    event Lose(address indexed _from);
+
     
     // Function to receive Ether. msg.data must be empty
    receive() external payable {}
