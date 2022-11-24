@@ -19,8 +19,7 @@ Made by Josh
 // how to play
 // 1. player will use startGame() to play
 // 2. 3 verifiably random numbers are produced and determine each slot's position
-// 3. if the player wins, then winnings will be sent directly to their wallet or 
-// we can make a credit system or whatever
+// 3. if the player wins, then winnings will be sent directly to their wallet
 
 
 
@@ -31,9 +30,11 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
   address payable public owner;
   //entry fee to play
   uint entryFee;
-    //denominated in USD
-    mapping(address => uint) public userBalance;
-
+  //denominated in USD
+  mapping(address => uint) public userBalance;
+  address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+  address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+  address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
 
   constructor(uint _entryFee, string memory _priceFeedAddress, uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
     entryFee = _entryFee;
@@ -61,13 +62,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
 
   mapping(address => address) public userERC20Choice;
 
-  function approveERC20(uint8 _choice) public returns (bool) {
-
-    address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
-    address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
-    address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
-        
-
+  function approveERC20Deposit(uint8 _choice) public returns (bool) {   
     if(_choice == 1){
       if (userERC20Choice[msg.sender] != DAI)
       {
@@ -90,10 +85,21 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
   }
 
   function depositERC20(uint amount) public {
-
     IERC20(userERC20Choice[msg.sender]).transfer(address(this), amount);
     userBalance[msg.sender] = amount / 1 ether;
-    
+  }
+
+  function ownerWithdraw() public {
+    require(msg.sender == owner);
+
+    owner.transfer(address(this).balance);
+    IERC20(DAI).approve(owner,  IERC20(DAI).balanceOf(address(this)));
+    IERC20(USDC).approve(owner, IERC20(USDC).balanceOf(address(this)));
+    IERC20(USDT).approve(owner, IERC20(USDT).balanceOf(address(this)));
+
+    IERC20(DAI).transfer(owner,  IERC20(DAI).balanceOf(address(this)));
+    IERC20(USDC).transfer(owner, IERC20(USDC).balanceOf(address(this)));
+    IERC20(USDT).transfer(owner, IERC20(USDT).balanceOf(address(this)));      
   }
 
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
@@ -101,7 +107,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     function playGame() public {
 
       //require entry fee is paid
-      require(userBalance[msg.sender] == entryFee);
+      require(userBalance[msg.sender] >= entryFee);
       userBalance[msg.sender] - entryFee;
 
       //reset mappings for the frontend
@@ -161,7 +167,7 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     // function.
     uint32 callbackGasLimit = 100000;
 
-        // The default is 3, but you can set this higher.
+    // The default is 3, but you can set this higher.
     uint16 requestConfirmations = 3;
 
       //number of random numbers  
