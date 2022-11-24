@@ -23,12 +23,17 @@ Made by Josh
 // we can make a credit system or whatever
 
 
+
+
 contract SlotMachineRouter is VRFConsumerBaseV2  {
 
   //owner of contract
   address payable public owner;
   //entry fee to play
   uint entryFee;
+    //denominated in USD
+    mapping(address => uint) public userBalance;
+
 
   constructor(uint _entryFee, string memory _priceFeedAddress, uint64 subscriptionId, address _vrfCoordinator, bytes32 _keyHash) VRFConsumerBaseV2(vrfCoordinator) {
     entryFee = _entryFee;
@@ -40,12 +45,64 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     owner = payable(msg.sender);
   }
 
+    //deposit MATIC
+   function depositETH() public payable {
+       (,int price,,,) = priceFeed.latestRoundData();
+        uint chainlinkPrice = uint(price);
+        uint chainlinkPriceTo4Digits = chainlinkPrice / 10 ** 4;
+        uint amountWei = msg.value * chainlinkPriceTo4Digits;
+        amountWei = amountWei / 10 ** 4;
+        uint amountETH = amountWei / 1 ether;
+        userBalance[msg.sender] = amountETH;
+  }
+
+  //deposit ERC20
+  // 1 = DAI, 2 = USDC, 3 = USDT
+
+  mapping(address => address) public userERC20Choice;
+
+  function approveERC20(uint8 _choice) public returns (bool) {
+
+    address DAI = 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063;
+    address USDC = 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174;
+    address USDT = 0xc2132D05D31c914a87C6611C10748AEb04B58e8F;
+        
+
+    if(_choice == 1){
+      if (userERC20Choice[msg.sender] != DAI)
+      {
+        userERC20Choice[msg.sender] == DAI;
+      }
+    }
+    else if(_choice == 2){
+      if (userERC20Choice[msg.sender] != USDC){
+      userERC20Choice[msg.sender] == USDC;
+      }
+    }
+    else if(_choice ==3){
+      if (userERC20Choice[msg.sender] != USDT){
+      userERC20Choice[msg.sender] == USDT;
+      }
+    }
+
+  return IERC20(userERC20Choice[msg.sender]).approve(address(this), entryFee * 1 ether );
+   
+  }
+
+  function depositERC20(uint amount) public {
+
+    IERC20(userERC20Choice[msg.sender]).transfer(address(this), amount);
+    userBalance[msg.sender] = amount / 1 ether;
+    
+  }
+
 /* ☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩☆♬○♩●♪✧♩　Play Game (*triple H Theme*)　♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆♩✧♪●♩○♬☆*/
     // play game function
-    function playGame() public payable {
+    function playGame() public {
 
       //require entry fee is paid
-      require(msg.value == entryFee);
+      require(userBalance[msg.sender] == entryFee);
+      userBalance[msg.sender] - entryFee;
 
       //reset mappings for the frontend
       delete addressToSlot1[msg.sender];
@@ -251,4 +308,26 @@ contract SlotMachineRouter is VRFConsumerBaseV2  {
     // Fallback function is called when msg.data is not empty
    fallback() external payable {}
 
+}
+
+
+interface IERC20 {
+    function totalSupply() external view returns (uint);
+
+    function balanceOf(address account) external view returns (uint);
+
+    function transfer(address recipient, uint amount) external returns (bool);
+
+    function allowance(address owner, address spender) external view returns (uint);
+
+    function approve(address spender, uint amount) external returns (bool);
+
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint amount
+    ) external returns (bool);
+
+    event Transfer(address indexed from, address indexed to, uint amount);
+    event Approval(address indexed owner, address indexed spender, uint amount);
 }
